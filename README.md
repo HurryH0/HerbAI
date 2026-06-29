@@ -1,16 +1,12 @@
-# HerbAI 🌱
+# HerbAI 
 
 **An AI-guided countertop farm that grows food with up to 90% less water.**
 
 Water-smart food production, made simple enough for anyone to grow — and the first of
 many turnkey, AI-enabled hydroponic systems.
 
-> Built for **Build for Good — National Student Hackathon for Social Impact**
-> Theme: **DHARTI** (Climate, Environment & Ecological Resilience) · Water scarcity
-
-🔗 **Live UI demo:** _enable GitHub Pages (see below), then link `https://<your-user>.github.io/HerbAI/`_
-🎬 **Prototype video:** _add your unlisted YouTube link_
-📊 **Pitch deck:** _add your Google Slides link_
+demo: https://drive.google.com/file/d/1F-rA-W53x0uz28_sVYpUhr7lyLMVftmB/view?usp=sharing
+details: 
 
 ---
 
