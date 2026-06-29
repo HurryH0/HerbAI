@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HerbAI — Interactive UI Demo</title>
+<style>
+  :root{
+    --ink:#16191c; --ink2:#20262b; --orange:#ed7d1c; --teal:#15b5c4; --teal-d:#0f7b8a;
+    --ice:#c7d4d9; --muted:#8a969d; --good:#37b24d; --warn:#f0a020; --bad:#e24b4a;
+    --line:#2c343a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 120% at 50% 0%,#23282d 0%,#121518 60%);
+    color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 16px 48px}
+  .head{text-align:center;margin-bottom:18px}
+  .head h1{margin:0;font-size:26px;letter-spacing:.5px}
+  .head h1 span{color:var(--orange)}
+  .head p{margin:6px 0 0;color:var(--muted);font-size:13px}
+
+  /* device shell */
+  .device{width:min(560px,100%);background:#0d0f11;border:1px solid #000;border-radius:22px;
+    padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.55);position:relative}
+  .bezel{background:var(--ink);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;gap:8px;
+    padding:10px 14px;background:var(--ink2);border-bottom:1px solid var(--line);font-size:12px}
+  .statusbar .brand{font-weight:700;color:#fff}
+  .statusbar .brand b{color:var(--orange)}
+  .pill{background:#171c20;border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--ice)}
+  .pill b{color:#fff}
+  .screen{padding:22px 20px;min-height:300px;display:flex;flex-direction:column;justify-content:center}
+
+  h2{margin:0 0 6px;font-size:20px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 18px;line-height:1.5}
+
+  .btn{appearance:none;border:0;cursor:pointer;font-size:15px;font-weight:600;border-radius:10px;
+    padding:13px 18px;color:#fff;background:var(--orange);transition:.15s transform,.15s filter}
+  .btn:hover{filter:brightness(1.08)} .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:#1a2024;border:1px solid var(--line);color:var(--ice)}
+  .btn.teal{background:var(--teal-d)}
+  .btn.block{width:100%;margin-top:6px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+
+  .crops{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .crop{background:#1a2024;border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;
+    text-align:left;transition:.15s}
+  .crop:hover{border-color:var(--teal);transform:translateY(-2px)}
+  .crop .em{font-size:24px} .crop .nm{font-weight:600;margin-top:6px}
+
+  /* dosing meter */
+  .reading{font-size:40px;font-weight:800;margin:2px 0}
+  .reading small{font-size:15px;font-weight:600;color:var(--muted)}
+  .meter{height:16px;border-radius:999px;background:#11161a;border:1px solid var(--line);
+    overflow:hidden;margin:14px 0 6px;position:relative}
+  .meter .fill{height:100%;width:0;transition:width .25s,background .25s}
+  .meter .tgt{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ice)}
+  .legend{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
+  .cue{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;margin-top:12px}
+
+  /* stages */
+  .stages{display:flex;gap:8px;margin:6px 0 16px}
+  .stg{flex:1;background:#1a2024;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+  .stg.active{border-color:var(--orange);background:#241a10}
+  .stg.done{opacity:.55}
+  .stg .t{font-size:13px;font-weight:700} .stg .p{font-size:11px;color:var(--muted);margin-top:3px}
+
+  .note{font-size:11px;color:var(--muted);text-align:center;margin-top:14px}
+  .demo-tag{margin-top:18px;font-size:12px;color:var(--muted);text-align:center;max-width:560px}
+  a{color:var(--teal)}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>Herb<span>AI</span></h1>
+    <p>Interactive walk-through of the guided screen — tap through it like the real device.</p>
+  </div>
+
+  <div class="device">
+    <div class="bezel">
+      <div class="statusbar">
+        <span class="brand">Herb<b>AI</b></span>
+        <span class="pill">level <b id="sb-level">—</b></span>
+        <span class="pill">ppm <b id="sb-ppm">—</b></span>
+        <span class="pill" id="sb-stage">idle</span>
+      </div>
+      <div class="screen" id="screen"></div>
+    </div>
+  </div>
+
+  <p class="demo-tag">Simulated UI demo — sensor values are illustrative. The real device reads
+  live TDS + ToF and drives the recirculating pump. Source &amp; firmware:
+  <a href="https://github.com/your-user/HerbAI">github.com/your-user/HerbAI</a></p>
+
+<script>
+const RECIPES = {
+  mint:        [["seedling",300,3],["vegetative",600,14],["mature",700,10]],
+  coriander:   [["seedling",300,3],["vegetative",600,14],["mature",700,10]],
+  oregano:     [["seedling",300,3],["vegetative",600,14],["mature",700,10]],
+  basil:       [["seedling",350,3],["vegetative",650,14],["mature",800,10]],
+  spring_onion:[["seedling",350,4],["vegetative",700,16],["mature",800,12]],
+};
+const EMOJI = {mint:"🌿",basil:"🌱",coriander:"🍃",oregano:"🌿",spring_onion:"🧅"};
+const NAME  = {mint:"Mint",basil:"Basil",coriander:"Coriander",oregano:"Oregano",spring_onion:"Spring onion"};
+const TOL = 40;
+
+let st = { water:false, crop:null, stageIdx:0, day:0, ppm:200, level:0.0 };
+const screen = document.getElementById('screen');
+
+function sb(){
+  document.getElementById('sb-level').textContent = Math.round(st.level*100)+"%";
+  document.getElementById('sb-ppm').textContent = st.crop? st.ppm : "—";
+  document.getElementById('sb-stage').textContent = st.crop? RECIPES[st.crop][st.stageIdx][0] : "idle";
+}
+function stage(){ return RECIPES[st.crop][st.stageIdx]; }
+
+/* ---------- screens ---------- */
+function boot(){
+  st = { water:false, crop:null, stageIdx:0, day:0, ppm:200, level:0.0 }; sb();
+  screen.innerHTML = `
+    <h2>Welcome 🌱</h2>
+    <p class="sub">A guided, water-smart garden. You'll do just two things: fill the tank, and
+    follow this screen. Let's start.</p>
+    <button class="btn block" onclick="goWater()">Begin</button>`;
+}
+function goWater(){ sb();
+  const ok = st.water;
+  screen.innerHTML = `
+    <h2>${ok? "Water detected ✓":"Add water to begin"}</h2>
+    <p class="sub">${ok? "The reservoir has enough water. Add your seeds to the rockwool grid, then choose a crop."
+                       : "The ToF sensor reads the reservoir as empty. Fill the 2 L tank to continue."}</p>
+    <div class="row">
+      <button class="btn ${ok?'ghost':''}" onclick="fillWater()">${ok?"Top up":"Fill water"}</button>
+      <button class="btn block teal" ${ok?'':'disabled style=\"opacity:.45;cursor:not-allowed\"'} onclick="goCrop()">Continue</button>
+    </div>`;
+}
+function fillWater(){ st.water=true; st.level=0.85; goWater(); }
+
+function goCrop(){ sb();
+  screen.innerHTML = `
+    <h2>Pick a crop</h2>
+    <p class="sub">Each crop has its own nutrient schedule — the device handles the rest.</p>
+    <div class="crops">
+      ${Object.keys(RECIPES).map(c=>`
+        <div class="crop" onclick="pickCrop('${c}')">
+          <div class="em">${EMOJI[c]}</div><div class="nm">${NAME[c]}</div>
+        </div>`).join("")}
+    </div>`;
+}
+function pickCrop(c){ st.crop=c; st.stageIdx=0; st.day=0; st.ppm=200; goDose(); }
+
+function goDose(){ sb();
+  const tgt = stage()[1];
+  const lo = Math.max(0, st.ppm - tgt + TOL);          // for bar maths
+  const pct = Math.min(100, Math.round(st.ppm / (tgt*1.4) * 100));
+  const tgtPct = Math.min(100, Math.round(tgt / (tgt*1.4) * 100));
+  let cue, color;
+  if (st.ppm < tgt - TOL){ cue="ADD MORE"; color="var(--bad)"; }
+  else if (st.ppm > tgt + TOL){ cue="TOO HIGH — dilute"; color="var(--warn)"; }
+  else { cue="ON TARGET ✓"; color="var(--good)"; }
+  const onTarget = Math.abs(st.ppm - tgt) <= TOL;
+  screen.innerHTML = `
+    <h2>Guided dosing — ${stage()[0]}</h2>
+    <p class="sub">Add nutrient a little at a time. The screen reads the water live and turns
+    green when you reach the target for this stage.</p>
+    <div class="reading">${st.ppm} <small>ppm</small></div>
+    <div class="meter">
+      <div class="fill" style="width:${pct}%;background:${color}"></div>
+      <div class="tgt" style="left:${tgtPct}%"></div>
+    </div>
+    <div class="legend"><span>0</span><span>target ${tgt} ppm</span><span>${Math.round(tgt*1.4)}</span></div>
+    <span class="cue" style="background:${color}1f;color:${color}">${cue}</span>
+    <div class="row" style="margin-top:16px">
+      <button class="btn ghost" onclick="dose(30)">+ Add nutrient</button>
+      <button class="btn ghost" onclick="dose(-30)">− Dilute (add water)</button>
+      <button class="btn block teal" ${onTarget?'':'disabled style=\"opacity:.45;cursor:not-allowed\"'}
+        onclick="goGrow()">Start growing</button>
+    </div>`;
+}
+function dose(d){ st.ppm = Math.max(0, st.ppm + d); goDose(); }
+
+function goGrow(){ sb();
+  const stages = RECIPES[st.crop];
+  screen.innerHTML = `
+    <h2>${NAME[st.crop]} — growing</h2>
+    <p class="sub">Day ${st.day+1} of the ${stage()[0]} stage. The pump recirculates; the device
+    nudges you to feed when the crop moves to the next stage.</p>
+    <div class="stages">
+      ${stages.map((s,i)=>`
+        <div class="stg ${i===st.stageIdx?'active':(i<st.stageIdx?'done':'')}">
+          <div class="t">${s[0]}</div><div class="p">${s[1]} ppm</div>
+        </div>`).join("")}
+    </div>
+    <div class="row">
+      <button class="btn ghost" onclick="nextDay()">Advance a day ▸</button>
+      <button class="btn ghost" onclick="camera()">📷 Canopy check</button>
+    </div>
+    <p class="note">Sensor fusion: level × concentration tells the device whether ppm rose from
+    the plant feeding (dose) or from evaporation (top up with water).</p>`;
+}
+function nextDay(){
+  st.day++; st.level = Math.max(0.15, st.level - 0.05);
+  if (st.day >= stage()[2]){
+    if (st.stageIdx + 1 < RECIPES[st.crop].length){ st.stageIdx++; st.day=0; nudge(); return; }
+    else { harvest(); return; }
+  }
+  goGrow();
+}
+function nudge(){ sb();
+  const tgt = stage()[1];
+  screen.innerHTML = `
+    <h2>Next stage: ${stage()[0]}</h2>
+    <p class="sub">Your ${NAME[st.crop]} has entered the ${stage()[0]} stage. It needs a richer
+    solution now — let's raise the target to <b>${tgt} ppm</b> so you can see how feeding tracks growth.</p>
+    <button class="btn block" onclick="goDose()">Add nutrient</button>`;
+}
+function camera(){ sb();
+  screen.innerHTML = `
+    <h2>Canopy check</h2>
+    <p class="sub">The camera rises on the lead screw and images the grid.</p>
+    <span class="cue" style="background:var(--good)1f;color:var(--good)">HEALTHY ✓</span>
+    <p class="note" style="margin-top:16px">No yellowing or curling detected. Over many batches the
+    device learns a nutrient recipe per crop and improves it automatically.</p>
+    <button class="btn block teal" style="margin-top:14px" onclick="goGrow()">Back</button>`;
+}
+function harvest(){ sb();
+  screen.innerHTML = `
+    <h2>🌿 Harvest time</h2>
+    <p class="sub">Your ${NAME[st.crop]} is ready — grown on a fraction of the water of soil, with
+    no expertise required. The device remembers this crop's recipe for next time.</p>
+    <button class="btn block" onclick="boot()">Grow again</button>`;
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Core (Raspberry Pi)
+RPi.GPIO>=0.7          # GPIO control (pump relay, stepper step/dir)
+adafruit-circuitpython-vl53l0x>=3.6   # ToF water-level sensor
+adafruit-circuitpython-ads1x15>=2.2   # ADC for the analog TDS probe
+pillow>=10.0           # TFT screen rendering
+opencv-python>=4.8     # camera capture / canopy framing
+
+# ML (train off-device; infer with tflite-runtime on the Pi)
+numpy>=1.24
+# tflite-runtime        # install the wheel matching your Pi/Python
